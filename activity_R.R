@@ -1,0 +1,83 @@
+library(plyr)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(tidyr)
+
+## data download and Code for reading in the dataset and/or processing the data
+
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileUrl, destfile="~/coursera_ref/test/data.zip")
+unzip("data.zip")
+data <- read.csv("activity.csv")
+head(data)
+dim(data)
+data$date <- as.Date(data$date)
+subdata <- subset(data, !is.na(data$steps))
+head(subdata)
+dim(subdata)
+
+##Histogram of the total number of steps taken each day 
+
+totstep <- aggregate(steps ~ date, subdata, FUN=sum)
+totstep
+
+hist(x=totstep$steps,
+     col="blue",
+     breaks=seq(0, 25000, by=2500),
+     xlab="Daily total steps",
+     ylab="Frequency of total steps", ylim=c(0, 20))
+
+## Mean and median number of steps taken each day
+mean(totstep$steps)
+median(totstep$steps)
+
+##Time series plot of the average number of steps taken
+
+daily_average_activity <- aggregate(subdata$steps, by=list(subdata$interval), FUN=mean)
+head(daily_average_activity)
+names(daily_average_activity) <- c("interval", "mean")
+head(daily_average_activity)
+plot(daily_average_activity$interval, daily_average_activity$mean, type = "l", xlab="5 min Interval", ylab="Average steps")
+
+##The 5-minute interval that, on average, contains the maximum number of steps
+daily_average_activity[which.max(daily_average_activity$mean), ]$interval
+
+##Code to describe and show a strategy for imputing missing data
+data$steps[is.na(data$steps)] <- mean(data$steps, na.rm = T)  
+head(data)
+
+##Histogram of the total number of steps taken each day after missing values are imputed
+imput_totstep <- aggregate(steps ~ date, data, FUN=sum)
+imput_totstep
+hist(x=imput_totstep$steps,
+     col="blue",
+     breaks=seq(0, 25000, by=2500),
+     xlab="Daily total steps with imputing NA",
+     ylab="Frequency of total steps", ylim=c(0, 30))
+##Calculate and report the mean and median total number of steps taken per day. 
+mean(imput_totstep$steps)
+median(imput_totstep$steps)
+
+##Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+###The missing values has been replaced with mean value of steps per interval so that the imputed missing values did not changed mean, nut median. 
+
+##Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+   data$wk <- weekdays(data$date)
+   head(data)
+  
+   is_weekday <- function(d) {
+     wd <- weekdays(d)
+     ifelse (wd == "Saturday" | wd == "Sunday", "weekend", "weekday")
+   }
+   
+   wx <- sapply(data$date, is_weekday)
+   data$wk <- as.factor(wx)
+   head(data)
+   wk_data <- aggregate(steps ~ wk+interval, data=data, FUN=mean)
+   wk_data
+   plot<- ggplot(wk_data, aes(x = interval , y = steps, color = wk)) +
+      geom_line() +
+      labs(x = "5 min Interval", y = "Average steps") +
+      facet_wrap(~wk, ncol = 1, nrow=2)
+   print(plot)
